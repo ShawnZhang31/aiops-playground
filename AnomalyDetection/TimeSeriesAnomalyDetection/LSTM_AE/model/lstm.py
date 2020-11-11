@@ -2,18 +2,23 @@ import torch
 import torch.nn as nn
 
 class LSTM(nn.Module):
-    def __init__(self, input_size=1, hidden_layer_size=100, output_size=1):
+    def __init__(self, num_classes, input_size, hidden_size, num_layers):
         super(LSTM, self).__init__()
-        self.hidden_layer_size = hidden_layer_size
 
-        self.lstm = nn.LSTM(input_size, hidden_layer_size)
+        self.num_classes = num_classes
+        self.num_layers = num_layers
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+        
+        self.lstm = nn.LSTM(input_size=input_size, hidden_size=hidden_size, num_layers=num_layers, batch_first=True)
+        self.fc = nn.Linear(hidden_size, num_classes)
 
-        self.linear = nn.Linear(hidden_layer_size, output_size)
+    def forward(self, x):
+        h_0 = torch.zeros(self.num_classes, x.size(0), self.hidden_size)
+        c_0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size)
 
-        self.hidden_cell = (torch.zeros(1,1,self.hidden_layer_size),
-                            torch.zeros(1,1,self.hidden_layer_size))
+        ula, (h_out, _) = self.lstm(x, (h_0, c_0))
 
-    def forward(self, input_seq):
-        lstm_out, self.hidden_cell = self.lstm(input_seq.view(len(input_seq) ,1, -1), self.hidden_cell)
-        predictions = self.linear(lstm_out.view(len(input_seq), -1))
-        return predictions[-1]
+        h_out = h_out.view(-1, self.hidden_size)
+        out = self.fc(h_out)
+        return out
